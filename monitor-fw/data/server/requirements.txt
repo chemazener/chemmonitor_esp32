@@ -1,0 +1,7 @@
+psutil>=5.9.0
+fastapi>=0.100.0
+uvicorn>=0.20.0
+# Opcional - para temperatura GPU NVIDIA:
+# pynvml
+# Opcional - para webcam:
+# opencv-python

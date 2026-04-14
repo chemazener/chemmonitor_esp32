@@ -1,0 +1,9 @@
+# Build artifacts
+monitor-fw/.pio/
+monitor-fw/.vscode/
+.esphome/
+.claude/
+
+# OS
+Thumbs.db
+.DS_Store

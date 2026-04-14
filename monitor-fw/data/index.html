@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ChemMonitor ESP32</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0f1117;color:#e1e4ed;font-family:system-ui,sans-serif}
+a{color:#6366f1;text-decoration:none}
+
+/* Hero */
+.hero{text-align:center;padding:40px 20px 30px;background:linear-gradient(180deg,#1a1d27 0%,#0f1117 100%)}
+.logo{font-size:2.5rem;font-weight:800;background:linear-gradient(135deg,#6366f1,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
+.version{color:#8b8fa3;font-size:.85rem;margin-bottom:16px}
+.tagline{font-size:1.1rem;color:#8b8fa3;max-width:500px;margin:0 auto 24px;line-height:1.5}
+.btn{display:inline-block;padding:12px 32px;background:#6366f1;color:#fff;border:none;border-radius:10px;font-size:1rem;cursor:pointer;margin:4px;transition:all .2s}
+.btn:hover{background:#818cf8;transform:translateY(-2px)}
+.btn-outline{background:transparent;border:2px solid #6366f1;color:#6366f1}
+
+/* Features */
+.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;padding:24px 20px;max-width:800px;margin:0 auto}
+.feat{background:#1a1d27;border:1px solid #2a2d3a;border-radius:12px;padding:16px;text-align:center}
+.feat-icon{font-size:2rem;margin-bottom:8px}
+.feat h3{font-size:.95rem;margin-bottom:6px}
+.feat p{font-size:.8rem;color:#8b8fa3;line-height:1.4}
+
+/* Screenshots */
+.screens{padding:24px 20px;max-width:800px;margin:0 auto}
+.screens h2{text-align:center;font-size:1.3rem;margin-bottom:20px}
+.screen-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.screen{background:#1a1d27;border:1px solid #2a2d3a;border-radius:12px;overflow:hidden}
+.screen-display{background:#0a0b0f;padding:12px;aspect-ratio:3/2;position:relative;overflow:hidden}
+.screen-label{padding:10px;font-size:.8rem;color:#8b8fa3;text-align:center}
+
+/* Mini mockups */
+.mock{width:100%;height:100%;position:relative}
+.mock-header{font-size:.6rem;color:#e1e4ed;font-weight:700;margin-bottom:6px}
+.mock-gauge{display:inline-block;width:40px;height:40px;border-radius:50%;border:3px solid #2a2d3a;position:relative;margin:0 6px}
+.mock-gauge::after{content:attr(data-val);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:.55rem;font-weight:700}
+.mock-gauge.cpu{border-color:#6366f1;color:#6366f1}
+.mock-gauge.ram{border-color:#06b6d4;color:#06b6d4}
+.mock-gauge.disk{border-color:#eab308;color:#eab308}
+.mock-bar{height:5px;background:#2a2d3a;border-radius:3px;margin:3px 0}
+.mock-bar-fill{height:100%;border-radius:3px}
+.mock-graph{height:40px;position:relative;margin-top:6px}
+.mock-graph svg{width:100%;height:100%}
+.mock-core-row{display:flex;gap:2px;margin-top:4px}
+.mock-core{flex:1;background:#2a2d3a;border-radius:2px;height:30px;position:relative}
+.mock-core-fill{position:absolute;bottom:0;width:100%;border-radius:2px}
+.mock-proc{font-size:.45rem;color:#8b8fa3;padding:1px 0;border-bottom:1px solid #1a1d27}
+.mock-proc span{color:#e1e4ed}
+
+/* Setup section */
+.setup{padding:24px 20px;max-width:600px;margin:0 auto}
+.setup h2{text-align:center;font-size:1.3rem;margin-bottom:20px}
+.card{background:#1a1d27;border:1px solid #2a2d3a;border-radius:12px;padding:16px;margin-bottom:16px}
+.card h3{font-size:1rem;color:#6366f1;margin-bottom:10px}
+.step{display:flex;gap:12px;margin-bottom:14px}
+.num{min-width:28px;height:28px;background:#6366f1;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;flex-shrink:0}
+.step-text{font-size:.9rem;line-height:1.5}
+.step-text code{background:#0f1117;padding:2px 6px;border-radius:4px;font-size:.85rem;color:#06b6d4}
+input{width:100%;padding:10px;background:#0f1117;border:1px solid #2a2d3a;border-radius:8px;color:#e1e4ed;font-size:.95rem;margin-bottom:10px}
+input:focus{border-color:#6366f1;outline:none}
+label{display:block;font-size:.85rem;color:#8b8fa3;margin-bottom:4px}
+.btn-green{background:#22c55e}.btn-green:hover{background:#16a34a}
+.status{padding:8px 12px;border-radius:8px;font-size:.85rem;margin-top:10px;display:none}
+.status.ok{display:block;background:rgba(34,197,94,.15);color:#22c55e}
+.status.err{display:block;background:rgba(239,68,68,.15);color:#ef4444}
+.status.info{display:block;background:rgba(99,102,241,.15);color:#818cf8}
+.tag{font-size:.7rem;padding:2px 8px;border-radius:10px;display:inline-block;margin-right:4px}
+.tag-win{background:rgba(6,182,212,.15);color:#06b6d4}
+.tag-linux{background:rgba(234,179,8,.15);color:#eab308}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.info-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #2a2d3a;font-size:.85rem}
+.info-row:last-child{border:none}
+.info-val{color:#6366f1;font-weight:600}
+
+.footer{text-align:center;padding:24px;border-top:1px solid #2a2d3a;margin-top:24px;color:#8b8fa3;font-size:.8rem}
+.footer b{color:#6366f1}
+.footer .cc{color:#06b6d4}
+
+/* Nav tabs */
+.tabs{display:flex;justify-content:center;gap:8px;padding:16px 20px;position:sticky;top:0;background:#0f1117;z-index:10;border-bottom:1px solid #2a2d3a}
+.tab{padding:8px 20px;border-radius:8px;cursor:pointer;font-size:.9rem;color:#8b8fa3;border:1px solid transparent;transition:all .2s}
+.tab.active{background:#6366f1;color:#fff}
+.tab:hover:not(.active){border-color:#2a2d3a}
+.page{display:none}.page.active{display:block}
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="logo">ChemMonitor ESP32</div>
+  <div class="version">v1.0 &middot; ESP32 + ILI9488 TFT 3.5"</div>
+  <p class="tagline">Monitor de servidores en tiempo real con pantalla tactil. Visualiza CPU, RAM, disco, red y procesos directamente en tu escritorio.</p>
+</div>
+
+<!-- Navigation -->
+<div class="tabs">
+  <div class="tab active" onclick="showPage('info')">Info</div>
+  <div class="tab" onclick="showPage('screens')">Pantallas</div>
+  <div class="tab" onclick="showPage('setup')">Configurar</div>
+</div>
+
+<!-- PAGE: Info -->
+<div id="page-info" class="page active">
+<div class="features">
+  <div class="feat">
+    <div class="feat-icon">📊</div>
+    <h3>5 Vistas Tactiles</h3>
+    <p>Dashboard, CPU, RAM, Cores y Procesos. Toca para cambiar.</p>
+  </div>
+  <div class="feat">
+    <div class="feat-icon">🌐</div>
+    <h3>Multiservidor</h3>
+    <p>Monitorea hasta 4 servidores. Windows y Linux.</p>
+  </div>
+  <div class="feat">
+    <div class="feat-icon">🌡️</div>
+    <h3>Temp + Ping</h3>
+    <p>Temperatura CPU/GPU, latencia de red, uptime del sistema.</p>
+  </div>
+  <div class="feat">
+    <div class="feat-icon">⚡</div>
+    <h3>Tiempo Real</h3>
+    <p>Actualización cada 2 segundos via WiFi. Gráficas con historial.</p>
+  </div>
+  <div class="feat">
+    <div class="feat-icon">📡</div>
+    <h3>Auto-Setup</h3>
+    <p>Conecta el ESP32 y configura todo desde el navegador. Sin cables extra.</p>
+  </div>
+  <div class="feat">
+    <div class="feat-icon">🔧</div>
+    <h3>Open Source</h3>
+    <p>Python + Arduino. Personalizable. Servidor incluido en el dispositivo.</p>
+  </div>
+</div>
+
+<!-- Device Info -->
+<div style="max-width:600px;margin:16px auto;padding:0 20px">
+<div class="card">
+  <h3>Dispositivo</h3>
+  <div class="info-row"><span>Chip</span><span class="info-val" id="chip">ESP32</span></div>
+  <div class="info-row"><span>MAC</span><span class="info-val" id="mac">...</span></div>
+  <div class="info-row"><span>Display</span><span class="info-val">ILI9488 480x320</span></div>
+  <div class="info-row"><span>Touch</span><span class="info-val">XPT2046</span></div>
+  <div class="info-row"><span>Heap libre</span><span class="info-val" id="heap">...</span></div>
+</div>
+</div>
+</div>
+
+<!-- PAGE: Screenshots -->
+<div id="page-screens" class="page">
+<div class="screens">
+  <h2>Vistas de la pantalla</h2>
+  <div class="screen-grid">
+
+    <!-- Dashboard -->
+    <div class="screen">
+      <div class="screen-display">
+        <div class="mock">
+          <div class="mock-header">CHEMMONITOR</div>
+          <div style="text-align:center;margin:4px 0">
+            <div class="mock-gauge cpu" data-val="13%"></div>
+            <div class="mock-gauge ram" data-val="69%"></div>
+            <div class="mock-gauge disk" data-val="79%"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px">
+            <div style="background:#1a1d27;border-radius:4px;padding:4px">
+              <div style="font-size:.4rem;color:#8b8fa3">CPU HISTORY</div>
+              <svg viewBox="0 0 100 30" style="width:100%;height:25px"><polyline points="0,25 10,20 20,22 30,15 40,18 50,10 60,14 70,8 80,12 90,6 100,9" fill="none" stroke="#6366f1" stroke-width="1.5"/></svg>
+            </div>
+            <div style="background:#1a1d27;border-radius:4px;padding:4px">
+              <div style="font-size:.4rem;color:#8b8fa3">RAM HISTORY</div>
+              <svg viewBox="0 0 100 30" style="width:100%;height:25px"><polyline points="0,10 10,12 20,11 30,13 40,12 50,14 60,13 70,15 80,14 90,13 100,14" fill="none" stroke="#06b6d4" stroke-width="1.5"/></svg>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px">
+            <div style="background:#1a1d27;border-radius:4px;padding:4px">
+              <div style="font-size:.4rem;color:#8b8fa3">CPU CORES</div>
+              <div class="mock-core-row">
+                <div class="mock-core"><div class="mock-core-fill" style="height:45%;background:#6366f1"></div></div>
+                <div class="mock-core"><div class="mock-core-fill" style="height:20%;background:#6366f1"></div></div>
+                <div class="mock-core"><div class="mock-core-fill" style="height:80%;background:#eab308"></div></div>
+                <div class="mock-core"><div class="mock-core-fill" style="height:35%;background:#6366f1"></div></div>
+                <div class="mock-core"><div class="mock-core-fill" style="height:60%;background:#6366f1"></div></div>
+                <div class="mock-core"><div class="mock-core-fill" style="height:15%;background:#6366f1"></div></div>
+                <div class="mock-core"><div class="mock-core-fill" style="height:50%;background:#6366f1"></div></div>
+                <div class="mock-core"><div class="mock-core-fill" style="height:25%;background:#6366f1"></div></div>
+              </div>
+            </div>
+            <div style="background:#1a1d27;border-radius:4px;padding:4px">
+              <div style="font-size:.4rem;color:#8b8fa3">PROCESOS (251)</div>
+              <div class="mock-proc"><span>chrome.exe</span> 2.3%</div>
+              <div class="mock-proc"><span>claude.exe</span> 1.9%</div>
+              <div class="mock-proc"><span>python.exe</span> 1.2%</div>
+              <div class="mock-proc"><span>explorer.exe</span> 0.8%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label">Vista 1: Dashboard completo</div>
+    </div>
+
+    <!-- CPU Detail -->
+    <div class="screen">
+      <div class="screen-display">
+        <div class="mock">
+          <div style="display:flex;gap:8px;align-items:center">
+            <div style="width:70px;height:70px;border-radius:50%;border:4px solid #6366f1;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700;color:#6366f1">13%</div>
+            <div>
+              <div style="font-size:.7rem;color:#e1e4ed;font-weight:600">CPU</div>
+              <div style="font-size:.5rem;color:#8b8fa3">12 cores &middot; 240MHz</div>
+              <div class="mock-core-row" style="margin-top:4px;height:16px">
+                <div class="mock-core"><div class="mock-core-fill" style="height:45%;background:#6366f1"></div></div>
+                <div class="mock-core"><div class="mock-core-fill" style="height:20%;background:#6366f1"></div></div>
+                <div class="mock-core"><div class="mock-core-fill" style="height:80%;background:#eab308"></div></div>
+                <div class="mock-core"><div class="mock-core-fill" style="height:35%;background:#6366f1"></div></div>
+                <div class="mock-core"><div class="mock-core-fill" style="height:60%;background:#6366f1"></div></div>
+                <div class="mock-core"><div class="mock-core-fill" style="height:15%;background:#6366f1"></div></div>
+              </div>
+            </div>
+          </div>
+          <div style="background:#1a1d27;border-radius:4px;padding:6px;margin-top:8px;flex:1">
+            <div style="display:flex;justify-content:space-between;font-size:.45rem;color:#8b8fa3"><span>CPU HISTORY</span><span style="color:#6366f1">13.2%</span></div>
+            <svg viewBox="0 0 200 60" style="width:100%;height:60px"><polyline points="0,50 15,45 30,48 45,30 60,35 75,25 90,28 105,20 120,30 135,15 150,22 165,18 180,25 200,20" fill="none" stroke="#6366f1" stroke-width="2"/></svg>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label">Vista 2: CPU detallado + grafica</div>
+    </div>
+
+    <!-- RAM Detail -->
+    <div class="screen">
+      <div class="screen-display">
+        <div class="mock">
+          <div style="display:flex;gap:8px;align-items:center">
+            <div style="width:70px;height:70px;border-radius:50%;border:4px solid #06b6d4;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700;color:#06b6d4">69%</div>
+            <div>
+              <div style="font-size:.7rem;color:#e1e4ed;font-weight:600">RAM</div>
+              <div style="font-size:.5rem;color:#8b8fa3">11.6GB / 17.0GB</div>
+              <div style="font-size:.5rem;color:#eab308;margin-top:2px">Disco: 403GB/510GB 79%</div>
+              <div class="mock-bar" style="width:80%;margin-top:2px"><div class="mock-bar-fill" style="width:79%;background:#eab308;height:100%"></div></div>
+            </div>
+          </div>
+          <div style="background:#1a1d27;border-radius:4px;padding:6px;margin-top:8px">
+            <div style="display:flex;justify-content:space-between;font-size:.45rem;color:#8b8fa3"><span>RAM HISTORY</span><span style="color:#06b6d4">69.3%</span></div>
+            <svg viewBox="0 0 200 60" style="width:100%;height:60px"><polyline points="0,20 15,19 30,21 45,18 60,20 75,19 90,21 105,20 120,18 135,20 150,19 165,21 180,20 200,19" fill="none" stroke="#06b6d4" stroke-width="2"/></svg>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label">Vista 3: RAM + Disco + grafica</div>
+    </div>
+
+    <!-- Cores -->
+    <div class="screen">
+      <div class="screen-display">
+        <div class="mock">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:.6rem;color:#e1e4ed;font-weight:600">CPU CORES</span><span style="font-size:.5rem;color:#6366f1">13.2% avg</span></div>
+          <div style="display:flex;gap:3px;height:80%">
+            <div class="mock-core" style="height:100%"><div class="mock-core-fill" style="height:18%;background:#6366f1"></div></div>
+            <div class="mock-core" style="height:100%"><div class="mock-core-fill" style="height:5%;background:#6366f1"></div></div>
+            <div class="mock-core" style="height:100%"><div class="mock-core-fill" style="height:43%;background:#6366f1"></div></div>
+            <div class="mock-core" style="height:100%"><div class="mock-core-fill" style="height:8%;background:#6366f1"></div></div>
+            <div class="mock-core" style="height:100%"><div class="mock-core-fill" style="height:30%;background:#6366f1"></div></div>
+            <div class="mock-core" style="height:100%"><div class="mock-core-fill" style="height:2%;background:#6366f1"></div></div>
+            <div class="mock-core" style="height:100%"><div class="mock-core-fill" style="height:19%;background:#6366f1"></div></div>
+            <div class="mock-core" style="height:100%"><div class="mock-core-fill" style="height:11%;background:#6366f1"></div></div>
+            <div class="mock-core" style="height:100%"><div class="mock-core-fill" style="height:12%;background:#6366f1"></div></div>
+            <div class="mock-core" style="height:100%"><div class="mock-core-fill" style="height:8%;background:#6366f1"></div></div>
+            <div class="mock-core" style="height:100%"><div class="mock-core-fill" style="height:15%;background:#6366f1"></div></div>
+            <div class="mock-core" style="height:100%"><div class="mock-core-fill" style="height:18%;background:#6366f1"></div></div>
+          </div>
+          <div style="display:flex;gap:3px;font-size:.35rem;color:#8b8fa3;margin-top:2px">
+            <div style="flex:1;text-align:center">0</div><div style="flex:1;text-align:center">1</div><div style="flex:1;text-align:center">2</div><div style="flex:1;text-align:center">3</div><div style="flex:1;text-align:center">4</div><div style="flex:1;text-align:center">5</div><div style="flex:1;text-align:center">6</div><div style="flex:1;text-align:center">7</div><div style="flex:1;text-align:center">8</div><div style="flex:1;text-align:center">9</div><div style="flex:1;text-align:center">10</div><div style="flex:1;text-align:center">11</div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-label">Vista 4: Cores a pantalla completa</div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- PAGE: Setup -->
+<div id="page-setup" class="page">
+<div class="setup">
+  <h2>Configuracion</h2>
+
+  <div class="card">
+    <h3>Paso 1: Descargar software del servidor</h3>
+    <div class="step">
+      <div class="num">1</div>
+      <div class="step-text">
+        Descarga e instala el software en cada PC que quieras monitorear:
+        <br><br>
+        <a class="btn" href="/download">Descargar archivos</a>
+        <br><br>
+        <span class="tag tag-win">Windows</span> Ejecuta <code>install.bat</code>
+        <br>
+        <span class="tag tag-linux">Linux</span> Ejecuta <code>./install.sh</code>
+        <br><br>
+        Luego inicia con <code>start_monitor.bat</code> o <code>./start_monitor.sh</code>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Paso 2: WiFi del ESP32</h3>
+    <form id="wifiForm" onsubmit="return saveWifi(event)">
+      <label>Red WiFi (SSID)</label>
+      <input type="text" id="ssid" placeholder="Nombre de tu red WiFi" required>
+      <label>Contrasena WiFi</label>
+      <input type="password" id="wifipass" placeholder="Contrasena">
+      <button type="submit" class="btn btn-green">Guardar WiFi</button>
+    </form>
+    <div id="wifiStatus" class="status"></div>
+  </div>
+
+  <div class="card">
+    <h3>Paso 3: Servidores a monitorear</h3>
+    <p style="font-size:.85rem;color:#8b8fa3;margin-bottom:12px">IP del PC donde instalaste el servidor. Hasta 4 servidores.</p>
+    <div id="serverList"></div>
+    <div class="grid">
+      <div><label>Nombre</label><input type="text" id="srvName" placeholder="Mi PC" value="Servidor 1"></div>
+      <div><label>IP:Puerto (default :8090)</label><input type="text" id="srvAddr" placeholder="192.168.1.174:8090"></div>
+    </div>
+    <button class="btn btn-outline" onclick="addServer()">+ Agregar</button>
+    <button class="btn btn-green" onclick="saveServers()">Guardar</button>
+    <div id="srvStatus" class="status"></div>
+  </div>
+
+  <div class="card">
+    <h3>Paso 4: Probar y arrancar</h3>
+    <button class="btn" onclick="testConnection()">Probar conexion</button>
+    <button class="btn btn-green" onclick="rebootESP()">Reiniciar ESP32</button>
+    <button class="btn" style="background:#ef4444" onclick="resetESP()">Borrar config y resetear</button>
+    <div id="testStatus" class="status"></div>
+  </div>
+</div>
+</div>
+
+<div class="footer">
+  Desarrollado por <b>ChemaDev</b> &amp; <span class="cc">ClaudeCode</span>
+</div>
+
+<script>
+// Tab navigation
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+let servers = [];
+
+fetch('/api/device').then(r=>r.json()).then(d=>{
+  document.getElementById('chip').textContent = d.chip||'ESP32';
+  document.getElementById('mac').textContent = d.mac||'...';
+  document.getElementById('heap').textContent = (d.heap/1024).toFixed(0)+'KB';
+  if(d.ssid) document.getElementById('ssid').value = d.ssid;
+}).catch(()=>{});
+
+fetch('/api/servers').then(r=>r.json()).then(d=>{
+  servers = d.servers||[];
+  renderServers();
+}).catch(()=>{});
+
+function renderServers(){
+  const el=document.getElementById('serverList');
+  if(!servers.length){el.innerHTML='';return;}
+  el.innerHTML=servers.map((s,i)=>
+    `<div class="info-row"><span>${s.name} - ${s.url}</span><span style="color:#ef4444;cursor:pointer" onclick="removeServer(${i})">X</span></div>`
+  ).join('');
+}
+function addServer(){
+  const name=document.getElementById('srvName').value.trim();
+  const addr=document.getElementById('srvAddr').value.trim();
+  if(!addr){show('srvStatus','err','Introduce IP:Puerto');return;}
+  servers.push({name:name||'Server',url:addr.startsWith('http')?addr:'http://'+addr});
+  renderServers();
+  document.getElementById('srvName').value='Servidor '+(servers.length+1);
+  document.getElementById('srvAddr').value='';
+}
+function removeServer(i){servers.splice(i,1);renderServers();}
+function saveWifi(e){
+  e.preventDefault();
+  fetch('/api/wifi',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ssid:document.getElementById('ssid').value,password:document.getElementById('wifipass').value})
+  }).then(r=>r.json()).then(d=>show('wifiStatus',d.status==='ok'?'ok':'err',d.status==='ok'?'WiFi guardado!':'Error'))
+  .catch(()=>show('wifiStatus','err','Error'));return false;
+}
+function saveServers(){
+  fetch('/api/servers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({servers})})
+  .then(r=>r.json()).then(d=>show('srvStatus',d.status==='ok'?'ok':'err',d.status==='ok'?'Guardado: '+servers.length+' servidores':'Error'))
+  .catch(()=>show('srvStatus','err','Error'));
+}
+function testConnection(){
+  show('testStatus','info','Probando...');
+  fetch('/api/test').then(r=>r.json()).then(d=>{
+    if(d.wifi==='connected'){
+      let msg='WiFi OK ('+d.ip+')\n';
+      if(d.servers) msg+=d.servers.map(s=>s.name+': '+(s.ok?'OK':'FALLO')).join('\n');
+      show('testStatus',(!d.servers||d.servers.every(s=>s.ok))?'ok':'err',msg);
+    }else show('testStatus','err','WiFi no conectado');
+  }).catch(()=>show('testStatus','err','Error'));
+}
+function rebootESP(){
+  fetch('/api/reboot',{method:'POST'}).then(()=>{
+    show('testStatus','info','Reiniciando ESP32...');
+  }).catch(()=>show('testStatus','err','Error'));
+}
+function resetESP(){
+  if(!confirm('Borrar TODA la configuracion (WiFi, servidores)? El ESP32 volvera al modo setup.')) return;
+  fetch('/api/reset',{method:'POST'}).then(()=>{
+    show('testStatus','info','Config borrada. ESP32 reiniciando en modo setup...');
+  }).catch(()=>show('testStatus','err','Error'));
+}
+function show(id,cls,msg){const el=document.getElementById(id);el.className='status '+cls;el.textContent=msg;}
+</script>
+</body>
+</html>

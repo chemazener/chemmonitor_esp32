@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Flujo del Sistema - Server Monitor</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0f1117; color:#e1e4ed; font-family:'Segoe UI',system-ui,sans-serif; padding:24px; overflow-x:hidden; }
+  h1 { font-size:1.6rem; margin-bottom:8px; }
+  .subtitle { color:#8b8fa3; margin-bottom:24px; font-size:.95rem; }
+
+  /* Flow diagram */
+  .flow { display:flex; align-items:flex-start; gap:16px; margin-bottom:32px; flex-wrap:wrap; justify-content:center; }
+  .node { background:#1a1d27; border:2px solid #2a2d3a; border-radius:16px; padding:20px; min-width:200px; max-width:260px; position:relative; transition:all .3s; cursor:pointer; }
+  .node:hover { border-color:#6366f1; transform:translateY(-4px); box-shadow:0 8px 32px rgba(99,102,241,.2); }
+  .node.active { border-color:#6366f1; box-shadow:0 0 20px rgba(99,102,241,.3); }
+  .node-icon { font-size:2rem; margin-bottom:8px; }
+  .node-title { font-size:1.1rem; font-weight:700; margin-bottom:6px; }
+  .node-desc { font-size:.8rem; color:#8b8fa3; line-height:1.4; }
+  .node-file { font-size:.75rem; color:#6366f1; margin-top:8px; font-family:monospace; background:#0f1117; padding:3px 8px; border-radius:6px; display:inline-block; }
+  .node-tech { display:flex; gap:4px; margin-top:8px; flex-wrap:wrap; }
+  .tag { font-size:.65rem; padding:2px 8px; border-radius:10px; background:rgba(99,102,241,.15); color:#818cf8; }
+  .tag-green { background:rgba(34,197,94,.15); color:#22c55e; }
+  .tag-cyan { background:rgba(6,182,212,.15); color:#06b6d4; }
+  .tag-yellow { background:rgba(234,179,8,.15); color:#eab308; }
+
+  /* Arrows */
+  .arrow { display:flex; align-items:center; justify-content:center; min-width:60px; flex-direction:column; gap:4px; }
+  .arrow-line { font-size:2rem; color:#6366f1; animation:pulse 2s infinite; }
+  .arrow-label { font-size:.7rem; color:#8b8fa3; text-align:center; max-width:80px; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* Detail panel */
+  .detail { background:#1a1d27; border:1px solid #2a2d3a; border-radius:12px; padding:20px; margin-top:16px; display:none; }
+  .detail.show { display:block; animation:fadeIn .3s; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  .detail h3 { color:#6366f1; margin-bottom:12px; font-size:1rem; }
+  .detail pre { background:#0f1117; padding:12px; border-radius:8px; font-size:.8rem; overflow-x:auto; color:#e1e4ed; line-height:1.6; }
+  .detail .path { color:#22c55e; }
+  .detail .comment { color:#8b8fa3; }
+  .detail .keyword { color:#818cf8; }
+  .detail .string { color:#06b6d4; }
+
+  /* Data flow section */
+  .section { margin-top:32px; }
+  .section h2 { font-size:1.2rem; margin-bottom:16px; padding-bottom:8px; border-bottom:1px solid #2a2d3a; }
+  .data-table { width:100%; border-collapse:collapse; }
+  .data-table th { text-align:left; color:#8b8fa3; padding:8px 12px; border-bottom:1px solid #2a2d3a; font-size:.8rem; text-transform:uppercase; letter-spacing:1px; }
+  .data-table td { padding:8px 12px; border-bottom:1px solid #1a1d27; font-size:.85rem; }
+  .data-table tr:hover { background:rgba(99,102,241,.05); }
+  .mono { font-family:monospace; color:#06b6d4; }
+
+  /* Vertical flow for mobile */
+  .vflow { display:flex; flex-direction:column; align-items:center; gap:0; margin:24px 0; }
+  .vflow .arrow { min-width:auto; }
+  .vflow .arrow-line { transform:rotate(90deg); }
+  .vflow .node { width:90%; max-width:500px; }
+
+  .step-num { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; background:#6366f1; color:white; border-radius:50%; font-size:.75rem; font-weight:700; margin-right:8px; }
+
+  .highlight { background:rgba(99,102,241,.1); border-left:3px solid #6366f1; padding:12px 16px; border-radius:0 8px 8px 0; margin:12px 0; }
+</style>
+</head>
+<body>
+
+<h1>Server Monitor - Flujo del Sistema</h1>
+<p class="subtitle">Diagrama interactivo del flujo de datos. Haz clic en cada componente para ver detalles.</p>
+
+<!-- Main horizontal flow -->
+<div class="flow">
+  <div class="node" onclick="showDetail('hw')">
+    <div class="node-icon">🖥️</div>
+    <div class="node-title">Hardware del PC</div>
+    <div class="node-desc">CPU, RAM, Disco, Red, Procesos del sistema Windows</div>
+    <div class="node-tech">
+      <span class="tag tag-green">Windows 11</span>
+      <span class="tag tag-green">12 cores</span>
+      <span class="tag tag-green">17GB RAM</span>
+    </div>
+  </div>
+
+  <div class="arrow">
+    <div class="arrow-line">→</div>
+    <div class="arrow-label">psutil lee hardware</div>
+  </div>
+
+  <div class="node" onclick="showDetail('server')">
+    <div class="node-icon">🐍</div>
+    <div class="node-title">Servidor Python</div>
+    <div class="node-desc">FastAPI + psutil. Recoge stats del sistema y las sirve por HTTP JSON</div>
+    <div class="node-file">server_monitor.py</div>
+    <div class="node-tech">
+      <span class="tag">FastAPI</span>
+      <span class="tag">psutil</span>
+      <span class="tag">uvicorn</span>
+    </div>
+  </div>
+
+  <div class="arrow">
+    <div class="arrow-line">→</div>
+    <div class="arrow-label">HTTP GET /api/stats JSON</div>
+  </div>
+
+  <div class="node" onclick="showDetail('wifi')">
+    <div class="node-icon">📡</div>
+    <div class="node-title">Red WiFi</div>
+    <div class="node-desc">Red local "NANA". PC y ESP32 conectados al mismo router</div>
+    <div class="node-tech">
+      <span class="tag tag-cyan">PC: 192.168.1.174</span>
+      <span class="tag tag-cyan">ESP32: 192.168.1.223</span>
+    </div>
+  </div>
+
+  <div class="arrow">
+    <div class="arrow-line">→</div>
+    <div class="arrow-label">WiFi HTTP cada 2s</div>
+  </div>
+
+  <div class="node" onclick="showDetail('esp')">
+    <div class="node-icon">📟</div>
+    <div class="node-title">ESP32 + Pantalla TFT</div>
+    <div class="node-desc">ESP32 con ILI9488 3.5" y touch XPT2046. Muestra gráficas en tiempo real</div>
+    <div class="node-file">monitor-fw/src/main.cpp</div>
+    <div class="node-tech">
+      <span class="tag tag-yellow">ESP32-D0WD-V3</span>
+      <span class="tag tag-yellow">ILI9488 480x320</span>
+      <span class="tag tag-yellow">XPT2046 Touch</span>
+    </div>
+  </div>
+</div>
+
+<!-- Detail panels -->
+<div id="detail-hw" class="detail">
+  <h3><span class="step-num">1</span> Origen de los datos: Hardware del PC</h3>
+  <p style="margin-bottom:12px;color:#8b8fa3">La librería <b>psutil</b> de Python lee directamente del sistema operativo:</p>
+  <table class="data-table">
+    <tr><th>Dato</th><th>Fuente del SO</th><th>Función psutil</th></tr>
+    <tr><td>CPU %</td><td>Performance counters de Windows</td><td class="mono">psutil.cpu_percent()</td></tr>
+    <tr><td>CPU por core</td><td>Cada core individual</td><td class="mono">psutil.cpu_percent(percpu=True)</td></tr>
+    <tr><td>RAM</td><td>GlobalMemoryStatusEx API</td><td class="mono">psutil.virtual_memory()</td></tr>
+    <tr><td>Disco</td><td>GetDiskFreeSpaceEx API</td><td class="mono">psutil.disk_usage('C:/')</td></tr>
+    <tr><td>Red</td><td>GetIfTable / iphlpapi</td><td class="mono">psutil.net_io_counters()</td></tr>
+    <tr><td>Procesos</td><td>NtQuerySystemInformation</td><td class="mono">psutil.process_iter()</td></tr>
+  </table>
+</div>
+
+<div id="detail-server" class="detail">
+  <h3><span class="step-num">2</span> Servidor Python (server_monitor.py)</h3>
+  <div class="highlight">Escucha en <b>0.0.0.0:8090</b> — accesible desde toda la red local</div>
+  <pre><code><span class="comment"># Endpoints:</span>
+<span class="keyword">GET</span> <span class="path">/</span>           <span class="comment">→ Dashboard web (HTML + Chart.js)</span>
+<span class="keyword">GET</span> <span class="path">/api/stats</span>  <span class="comment">→ JSON con todos los datos (lo que usa el ESP32)</span>
+<span class="keyword">GET</span> <span class="path">/api/stream</span> <span class="comment">→ Server-Sent Events para el dashboard web</span>
+
+<span class="comment"># Respuesta de /api/stats:</span>
+{
+  <span class="string">"cpu"</span>: { <span class="string">"total"</span>: 12.5, <span class="string">"cores"</span>: [9.9, 2.8, 35.9, ...] },
+  <span class="string">"memory"</span>: { <span class="string">"total"</span>: 17GB, <span class="string">"used"</span>: 11.8GB, <span class="string">"percent"</span>: 69.3 },
+  <span class="string">"disk"</span>: { <span class="string">"total"</span>: 510GB, <span class="string">"used"</span>: 403GB, <span class="string">"percent"</span>: 79.1 },
+  <span class="string">"network"</span>: { <span class="string">"bytes_sent"</span>: 4.1GB, <span class="string">"bytes_recv"</span>: 13.5GB },
+  <span class="string">"processes"</span>: [ { <span class="string">"name"</span>: <span class="string">"chrome.exe"</span>, <span class="string">"cpu_percent"</span>: 2.3, ... } ],
+  <span class="string">"process_count"</span>: 251
+}</code></pre>
+</div>
+
+<div id="detail-wifi" class="detail">
+  <h3><span class="step-num">3</span> Transporte: Red WiFi Local</h3>
+  <pre><code><span class="comment"># Flujo de red:</span>
+
+ESP32 (192.168.1.223)
+   │
+   │  <span class="keyword">HTTP GET</span> http://192.168.1.174:8090/api/stats
+   │  <span class="comment">cada 2 segundos (hilo background en Core 0)</span>
+   │
+   ▼
+Router WiFi <span class="string">"NANA"</span> (192.168.1.1)
+   │
+   │  <span class="comment">red local, misma subnet 192.168.1.x</span>
+   │
+   ▼
+PC Servidor (192.168.1.174:8090)
+   │
+   │  <span class="keyword">HTTP 200 OK</span>
+   │  Content-Type: application/json
+   │  <span class="comment">~2KB de datos JSON</span>
+   │
+   ▼
+ESP32 recibe y parsea JSON</code></pre>
+</div>
+
+<div id="detail-esp" class="detail">
+  <h3><span class="step-num">4</span> ESP32: Procesamiento y Visualización</h3>
+  <div class="highlight">Firmware Arduino en C++ — Dual core: Core 0 = HTTP fetch, Core 1 = Touch + Display</div>
+  <pre><code><span class="comment"># Arquitectura dual-core:</span>
+
+<span class="keyword">Core 0</span> — Hilo de red (fetchTask)
+  ├─ Cada 2s hace HTTP GET al servidor
+  ├─ Parsea JSON con ArduinoJson
+  ├─ Guarda datos en variables globales (con mutex)
+  └─ Señala fetchDone = true
+
+<span class="keyword">Core 1</span> — Loop principal (50Hz)
+  ├─ Lee touch XPT2046 cada 20ms
+  ├─ Si hay touch → cambia vista instantáneamente
+  ├─ Si fetchDone → redibuja con datos nuevos
+  └─ Dibuja en ILI9488 por SPI a 40MHz
+
+<span class="comment"># Pines SPI (compartido display + touch):</span>
+  CLK  = GPIO14    CS Display = GPIO15
+  MOSI = GPIO13    CS Touch   = GPIO33
+  MISO = GPIO12    DC         = GPIO2
+  Backlight = GPIO27    Touch IRQ = GPIO36
+
+<span class="comment"># 5 Vistas (touch para ciclar):</span>
+  0 = Dashboard completo
+  1 = CPU detallado + gráfica grande
+  2 = RAM/Disco detallado + gráfica grande
+  3 = CPU Cores pantalla completa
+  4 = Procesos pantalla completa</code></pre>
+</div>
+
+<!-- Vertical detailed flow -->
+<div class="section">
+  <h2>Flujo paso a paso (cada 2 segundos)</h2>
+  <div class="vflow">
+    <div class="node" style="border-color:#22c55e">
+      <div class="node-title"><span class="step-num">1</span> psutil lee el sistema</div>
+      <div class="node-desc">Python llama a las APIs de Windows para obtener CPU, RAM, disco, red y procesos actuales. Todo en una sola función <span class="mono">get_system_stats()</span></div>
+    </div>
+    <div class="arrow"><div class="arrow-line" style="transform:rotate(90deg)">→</div><div class="arrow-label">dict Python</div></div>
+    <div class="node" style="border-color:#6366f1">
+      <div class="node-title"><span class="step-num">2</span> FastAPI serializa a JSON</div>
+      <div class="node-desc">El endpoint <span class="mono">/api/stats</span> convierte el diccionario Python a JSON y lo envía como respuesta HTTP. ~2KB de datos.</div>
+    </div>
+    <div class="arrow"><div class="arrow-line" style="transform:rotate(90deg)">→</div><div class="arrow-label">HTTP sobre WiFi</div></div>
+    <div class="node" style="border-color:#06b6d4">
+      <div class="node-title"><span class="step-num">3</span> ESP32 Core 0 recibe JSON</div>
+      <div class="node-desc">El hilo <span class="mono">fetchTask</span> en Core 0 hace HTTP GET, recibe el JSON y lo parsea con ArduinoJson. Guarda los valores en variables globales protegidas con mutex.</div>
+    </div>
+    <div class="arrow"><div class="arrow-line" style="transform:rotate(90deg)">→</div><div class="arrow-label">variables globales</div></div>
+    <div class="node" style="border-color:#eab308">
+      <div class="node-title"><span class="step-num">4</span> ESP32 Core 1 dibuja en pantalla</div>
+      <div class="node-desc">El loop principal detecta <span class="mono">fetchDone</span> y redibuja la vista actual. Usa TFT_eSPI para dibujar gauges, gráficas, barras y texto sobre SPI a 40MHz al ILI9488.</div>
+    </div>
+    <div class="arrow"><div class="arrow-line" style="transform:rotate(90deg)">→</div><div class="arrow-label">SPI 40MHz</div></div>
+    <div class="node" style="border-color:#ef4444">
+      <div class="node-title"><span class="step-num">5</span> Pantalla TFT muestra datos</div>
+      <div class="node-desc">ILI9488 480x320 16-bit color muestra las gráficas. El touch XPT2046 permite cambiar entre 5 vistas tocando la pantalla.</div>
+    </div>
+  </div>
+</div>
+
+<!-- File structure -->
+<div class="section">
+  <h2>Archivos del proyecto</h2>
+  <table class="data-table">
+    <tr><th>Archivo</th><th>Rol</th><th>Lenguaje</th></tr>
+    <tr><td class="mono">server_monitor.py</td><td>Servidor API — lee hardware del PC y sirve JSON + dashboard web</td><td><span class="tag">Python</span></td></tr>
+    <tr><td class="mono">monitor-fw/src/main.cpp</td><td>Firmware ESP32 — fetch HTTP, touch, display TFT</td><td><span class="tag tag-yellow">C++ Arduino</span></td></tr>
+    <tr><td class="mono">monitor-fw/platformio.ini</td><td>Config de compilación — pines, librerías, flags</td><td><span class="tag tag-cyan">INI</span></td></tr>
+    <tr><td class="mono">.claude/launch.json</td><td>Config para lanzar el servidor Python desde Claude Preview</td><td><span class="tag tag-green">JSON</span></td></tr>
+    <tr><td class="mono">esphome-monitor.yaml</td><td>Config ESPHome anterior (ya no se usa, reemplazado por Arduino)</td><td><span class="tag">YAML</span></td></tr>
+  </table>
+</div>
+
+<script>
+function showDetail(id) {
+  document.querySelectorAll('.detail').forEach(d => d.classList.remove('show'));
+  document.querySelectorAll('.node').forEach(n => n.classList.remove('active'));
+  const el = document.getElementById('detail-' + id);
+  if (el) {
+    el.classList.add('show');
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  event.currentTarget.classList.add('active');
+}
+
+// Auto-cycle through details on load
+let idx = 0;
+const ids = ['hw', 'server', 'wifi', 'esp'];
+function autoShow() {
+  const nodes = document.querySelectorAll('.flow .node');
+  if (idx < ids.length) {
+    nodes[idx].click();
+    idx++;
+    setTimeout(autoShow, 3000);
+  }
+}
+setTimeout(autoShow, 1000);
+</script>
+</body>
+</html>
