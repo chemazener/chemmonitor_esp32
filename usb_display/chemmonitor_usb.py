@@ -31,14 +31,34 @@ UPDATE_INTERVAL = 2
 NUM_VIEWS = 5  # 0=Dashboard 1=CPU 2=RAM 3=Network 4=Clock
 AUTO_ROTATE_VIEWS = True   # Auto-cycle views
 AUTO_ROTATE_SECS = 15      # Seconds per view
+STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".chemmonitor_state")
 
 # ============== STATE ==============
-current_view = 0
-rotation = 0  # 0, 90, 180, 270
+def load_state():
+    try:
+        with open(STATE_FILE, "r") as f:
+            parts = f.read().strip().split(",")
+            return int(parts[0]) % NUM_VIEWS, int(parts[1]) % 360
+    except:
+        return 0, 0
+
+def save_state():
+    try:
+        with open(STATE_FILE, "w") as f:
+            f.write(f"{current_view},{rotation}")
+    except:
+        pass
+
+# Load last state - rotate 90° from last time
+_last_view, _last_rot = load_state()
+current_view = _last_view
+rotation = (_last_rot + 90) % 360
+save_state()  # Persist immediately so next launch gets the new rotation
+rotation = 0
 paused = False
 auto_rotate_enabled = AUTO_ROTATE_VIEWS
 last_view_change = time.time()
-manual_override = False  # True when user presses a key, disables auto-rotate temporarily
+manual_override = False
 lock = threading.Lock()
 
 # ============== COLORS ==============
@@ -176,14 +196,17 @@ def setup_keyboard():
                     current_view = (current_view + 1) % NUM_VIEWS
                     last_view_change = time.time()
                     manual_override = True
+                    save_state()
                     print(f"\n>> Vista {current_view}")
                 elif key == keyboard.Key.f11:
                     current_view = (current_view - 1) % NUM_VIEWS
                     last_view_change = time.time()
                     manual_override = True
+                    save_state()
                     print(f"\n>> Vista {current_view}")
                 elif key == keyboard.Key.f10:
                     rotation = (rotation + 90) % 360
+                    save_state()
                     print(f"\n>> Rotacion {rotation}°")
                 elif key == keyboard.Key.f12:
                     paused = not paused
@@ -627,6 +650,7 @@ def main():
                             if time.time() - last_view_change >= AUTO_ROTATE_SECS:
                                 current_view = (current_view + 1) % NUM_VIEWS
                                 last_view_change = time.time()
+                                save_state()
                         # Reset manual override after 60s of no key press
                         if manual_override and time.time() - last_view_change > 60:
                             manual_override = False
