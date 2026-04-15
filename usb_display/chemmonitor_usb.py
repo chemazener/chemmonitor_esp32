@@ -29,11 +29,16 @@ SCREEN_W = 320
 SCREEN_H = 480
 UPDATE_INTERVAL = 2
 NUM_VIEWS = 5  # 0=Dashboard 1=CPU 2=RAM 3=Network 4=Clock
+AUTO_ROTATE_VIEWS = True   # Auto-cycle views
+AUTO_ROTATE_SECS = 15      # Seconds per view
 
 # ============== STATE ==============
 current_view = 0
 rotation = 0  # 0, 90, 180, 270
 paused = False
+auto_rotate_enabled = AUTO_ROTATE_VIEWS
+last_view_change = time.time()
+manual_override = False  # True when user presses a key, disables auto-rotate temporarily
 lock = threading.Lock()
 
 # ============== COLORS ==============
@@ -165,13 +170,17 @@ def setup_keyboard():
     try:
         from pynput import keyboard
         def on_press(key):
-            global current_view, rotation, paused
+            global current_view, rotation, paused, auto_rotate_enabled, last_view_change, manual_override
             with lock:
                 if key == keyboard.Key.f9:
                     current_view = (current_view + 1) % NUM_VIEWS
+                    last_view_change = time.time()
+                    manual_override = True
                     print(f"\n>> Vista {current_view}")
                 elif key == keyboard.Key.f11:
                     current_view = (current_view - 1) % NUM_VIEWS
+                    last_view_change = time.time()
+                    manual_override = True
                     print(f"\n>> Vista {current_view}")
                 elif key == keyboard.Key.f10:
                     rotation = (rotation + 90) % 360
@@ -179,10 +188,14 @@ def setup_keyboard():
                 elif key == keyboard.Key.f12:
                     paused = not paused
                     print(f"\n>> {'PAUSADO' if paused else 'ACTIVO'}")
+                elif key == keyboard.Key.f8:
+                    auto_rotate_enabled = not auto_rotate_enabled
+                    manual_override = False
+                    print(f"\n>> Auto-rotate: {'ON' if auto_rotate_enabled else 'OFF'}")
         listener = keyboard.Listener(on_press=on_press)
         listener.daemon = True
         listener.start()
-        print("Teclado: F9=Siguiente F10=Rotar F11=Anterior F12=Pausar")
+        print("Teclado: F9=Siguiente F10=Rotar F11=Anterior F12=Pausar F8=AutoRotate")
         return True
     except ImportError:
         print("pynput no instalado - sin control por teclado")
@@ -337,8 +350,9 @@ def draw_status_bar(draw, W, H):
     for i in range(NUM_VIEWS):
         c = C_ACCENT if i == current_view else C_BORDER
         draw.ellipse([W//2-20+i*10, H-11, W//2-14+i*10, H-5], fill=c)
-    draw.text((4, H-14), f"R{rotation}°", fill=C_MUTED, font=F(8))
-    draw.text((W-120, H-14), "F9/F11:Vista F10:Rotar", fill=C_BORDER, font=F(8))
+    ar = "AUTO" if auto_rotate_enabled and not manual_override else ""
+    draw.text((4, H-14), f"R{rotation}° {ar}", fill=C_MUTED, font=F(8))
+    draw.text((W-90, H-14), "ChemaDev & ClaudeCode", fill=C_BORDER, font=F(8))
 
 # ============== VIEWS ==============
 def render_dashboard(W, H):
@@ -588,6 +602,7 @@ def main():
     setup_keyboard()
     print()
 
+    global current_view, rotation, paused, auto_rotate_enabled, last_view_change, manual_override
     display = USBDisplay(port, BAUD_RATE)
     connected = False
 
@@ -606,6 +621,16 @@ def main():
 
             try:
                 if not paused:
+                    # Auto-rotate views
+                    with lock:
+                        if auto_rotate_enabled and not manual_override:
+                            if time.time() - last_view_change >= AUTO_ROTATE_SECS:
+                                current_view = (current_view + 1) % NUM_VIEWS
+                                last_view_change = time.time()
+                        # Reset manual override after 60s of no key press
+                        if manual_override and time.time() - last_view_change > 60:
+                            manual_override = False
+
                     t0 = time.time()
                     collect_stats()
                     img = render_current()
